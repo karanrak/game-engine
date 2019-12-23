@@ -1,14 +1,27 @@
-README for HW1 :
+Might have to Change Env Settings to your personal SFML directories while running.
 
-To run the program, set the Project Properties> C++> General> Additional Include directories to include the local implementation 
-of SFML\include. The required dlls are included.
+PART2 ---------------------------------------------------------------------------------
 
-Next carry out similar task to enter path of SFML\lib in Linker>General to update the additional library directories.
+The solution for Part 2 of the assignment is in the following folders 
+\basic_zmq_client_server has the server and client code
 
-The program should work once these two steps are carried out.
+Execute as standalone_zmq_client.exe <ClientID> <SleepTimeinMs>
+	e.g. HW1.exe 1 1500
 
-The window controls are listed below:
-1 : Left, Right, Up : Directional Motion
-2 : 'R' : toggling between scaling and proportional using the event system.
-3 : 'T' : toggling between scaling and proportional using real-time inputs (less reliable, check Design Document section 4 for more info).
+The client will send 20 messages at Fixed intervals, as decided by the user. And the server will respond with the latest map update as reply.
 
+FINAL SUBMISSION -----------------------------------------------------------------------
+
+The solution for the remainder of the assignment is stored in \main\server_main and 
+\main\client_main as follows:
+\server_main has the server code
+	
+\client_main has the client code
+	Execute as client.exe <ClientId>
+
+Note : 
+
+The clients can connect at arbitary times and number of clients is limited to 5 presently since I have set the number of instances of the client 
+to 5 and the game's physics systems performance degrades significantly as the number of clients increase. It can be changed to arbitary number 
+since the rest of the code (server side handling as well as client side handling) is written without any such limiting case. The line containing
+this limit is L44 in \client_main\client.cpp (	Character clients[5]; ).
