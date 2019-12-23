@@ -1,85 +1,182 @@
-
-class Platform : public sf::RectangleShape {
+//
+//	Game Object Model definition
+//	Written by karanrak
+//
+class GameObject : public sf::RectangleShape {
 public:
-	explicit Platform(const sf::Vector2f& dims) :
-		m_dims(dims), RectangleShape(dims)
-	{
-		setPosition(sf::Vector2f(0.f, 550.f));
-		update();
+	explicit GameObject(const sf::Vector2f dims = sf::Vector2f(50.f, 100.f), sf::Vector2f pos = sf::Vector2f(10.f, 0.f), bool visible = true) :
+		m_dims(dims), m_pos(pos), RectangleShape(dims) {
+		setPosition(m_pos);
+
+	}
+	sf::Vector2f getPos() {
+		m_pos = getPosition();
+		return m_pos;
+	}
+	void setPos(sf::Vector2f pos) {
+		m_pos = pos;
+		setPosition(m_pos);
 	}
 	void setTex(const sf::Texture* texture)
 	{
 		setTexture(texture);
 		setTextureRect(sf::IntRect(0, 0, 4000, 1000));
-		update();
+	}
+private:
+	sf::Vector2f m_dims;
+	sf::Vector2f m_pos;
+};
+
+class Scrollable : public GameObject {
+public:
+	explicit Scrollable(const sf::Vector2f dims = sf::Vector2f(50.f, 100.f), sf::Vector2f pos = sf::Vector2f(10.f, 0.f), bool visible = true) :
+		GameObject(dims, pos) {
+		m_screenno = 0;
 	}
 
-	sf::Vector2f& getDims()
+	int getScreenno() {
+		return m_screenno;
+	}
+
+	int setScreenno(int screenno) {
+		m_screenno = screenno;
+	}
+
+	void translate(sf::Vector2f vec) {
+		move(vec);
+	}
+private:
+	int m_screenno;
+
+};
+
+
+class Visible : public Scrollable {
+public:
+	explicit Visible(const sf::Vector2f dims = sf::Vector2f(50.f, 100.f), sf::Vector2f pos = sf::Vector2f(10.f, 0.f), bool visible = true) :
+		m_visible(visible), Scrollable(dims, pos) {
+
+	}
+	void setVisible(bool visible) {
+		m_visible = visible;
+	}
+	bool getVisible() {
+		return m_visible;
+	}
+
+private:
+	bool m_visible;
+};
+
+class Moveable : public Visible {
+public:
+	explicit Moveable(const sf::Vector2f dims = sf::Vector2f(50.f, 100.f), sf::Vector2f pos = sf::Vector2f(10.f, 0.f), bool visible = true) :
+		Visible(dims, pos, visible) {
+
+	}
+	void Move(sf::Vector2f vec, int units) {
+		move(sf::Vector2f(units * vec.x, units * vec.y));
+	}
+private:
+
+};
+
+class Colorable : public Moveable {
+public:
+	explicit Colorable(const sf::Vector2f dims = sf::Vector2f(50.f, 100.f), sf::Vector2f pos = sf::Vector2f(10.f, 0.f), bool visible = true, sf::Color color = sf::Color::Yellow) :
+		m_color(color), Moveable(dims, pos, visible) {
+		setFillColor(m_color);
+	}
+	sf::Color getColor() {
+		return m_color;
+	}
+
+	void setColor(sf::Color color) {
+		m_color = color;
+		setFillColor(m_color);
+	}
+
+private:
+	sf::Color m_color;
+};
+
+
+
+class Platform : public Visible {
+public:
+	explicit Platform(const sf::Vector2f dims = sf::Vector2f(150.f, 20.f), sf::Vector2f pos = sf::Vector2f(0.f, 500.f), bool visible = true) :
+		Visible(dims, pos, visible) {
+
+	}
+
+	sf::Vector2f getDims()
 	{
 		return m_dims;
 	}
+
 
 private:
 	sf::Vector2f m_dims;
 };
 
 
-class Character : public sf::RectangleShape {
+class Character : public Colorable {
 public:
-	explicit Character(const sf::Vector2f& dims = sf::Vector2f(50.f, 100.f), int id = 0, bool visible = false) :
-		m_id(id), isVisible(visible), m_dims(dims), RectangleShape(dims)
+	explicit Character(int id = 0, const sf::Vector2f dims = sf::Vector2f(50.f, 100.f), sf::Vector2f pos = sf::Vector2f(10.f, 0.f), bool visible = false, sf::Color color = sf::Color::Yellow) :
+		m_id(id), Colorable(dims, pos, visible, color)
 	{
-		setPosition(sf::Vector2f(10.f, 0.f));
-		setFillColor(sf::Color::Yellow);
-		update();
-	}
 
-	bool getVisibility()
-	{
-		return isVisible;
 	}
 	int getId() {
 		return m_id;
-	}
-
-	void setVisibility(bool s) {
-		isVisible = s;
 	}
 	void setId(int id) {
 		m_id = id;
 	}
 
+
 private:
-	bool isVisible;
 	int m_id;
-	sf::Vector2f m_dims;
 };
 
-class MovingPlatform : public sf::RectangleShape {
+class MovingPlatform : public Moveable {
 public:
-	explicit MovingPlatform(const sf::Vector2f& dims) :
-		m_dims(dims), RectangleShape(dims)
-	{
-		setPosition(sf::Vector2f(300.f, 250.f));
-		update();
-	}
-	void resize(const sf::Vector2f& dims)
-	{
-		m_dims = dims;
-		setSize(m_dims);
-		update();
-	}
-	void setTex(const sf::Texture* texture)
-	{
-		setTexture(texture);
-		setTextureRect(sf::IntRect(0, 0, 4000, 1000));
-		update();
-	}
-	sf::Vector2f& getDims()
-	{
-		return m_dims;
+	explicit MovingPlatform(const sf::Vector2f dims = sf::Vector2f(150.f, 20.f), sf::Vector2f pos = sf::Vector2f(300.f, 200.f), bool visible = true) :
+		Moveable(dims, pos, visible) {
+
 	}
 
 private:
-	sf::Vector2f m_dims;
+};
+
+class SpawnPoint : public Scrollable {
+public:
+	explicit SpawnPoint(const sf::Vector2f dims = sf::Vector2f(5.f, 5.f), sf::Vector2f pos = sf::Vector2f(100.f, 0.f)) :
+		Scrollable(dims, pos) {
+
+	}
+private:
+
+};
+
+
+class DeathZone : public Scrollable {
+public:
+	explicit DeathZone(const sf::Vector2f dims = sf::Vector2f(5.f, 5.f), sf::Vector2f pos = sf::Vector2f(400.f, 400.f)) :
+		Scrollable(dims, pos) {
+
+	}
+private:
+
+};
+
+
+class SideBoundary : public Scrollable {
+public:
+	explicit SideBoundary(const sf::Vector2f dims = sf::Vector2f(10.f, 600.f), sf::Vector2f pos = sf::Vector2f(700.f, 0.f)) :
+		Scrollable(dims, pos) {
+
+	}
+private:
+
 };

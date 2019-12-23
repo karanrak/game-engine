@@ -1,3 +1,8 @@
+//
+//	Client.cpp
+//	Written by karanrak
+//
+
 #include <SFML/Graphics.hpp>
 #include "myTime.h"
 #include "GameObjects.h"
@@ -10,7 +15,7 @@ using namespace std;
 
 #define MAIN_STEP_SIZE 2
 
-gametime* TimePtr;
+gametime * TimePtr;
 
 void split(const string& str, vector<string>& cont, char delim = ' ')
 {
@@ -23,29 +28,44 @@ void split(const string& str, vector<string>& cont, char delim = ' ')
 
 int main(int argc, char* argv[])
 {
+	int contextNum = atoi(argv[1]);
 	zmq::context_t context(1);
 	zmq::socket_t socket(context, ZMQ_REQ);
 	std::cout << "connecting to hello world server…" << std::endl;
-	socket.connect("tcp://localhost:5555");
+	string sockStr = "tcp://localhost:" + to_string(5555 + contextNum);
+	socket.connect(sockStr);
 
 	TimePtr = new gametime(MAIN_STEP_SIZE);
 
-	map<int, sf::Vector2f> client_map;
+	map<int, sf::Vector2f> clientMap;
+	map<int, int> clientScreen;
 	map<int, sf::Vector2f>::iterator itr;
+	map<int, int>::iterator itr2;
 	vector<string> holder;
 	int numPeers = 0;
 
 	// create the window
 	sf::RenderWindow window(sf::VideoMode(800, 600), "My window");
 
-	int dir = 1, flagCheckResize = 0, flagPause = 0, flagInfocus = 0, timeElapsed = 0, lastTime = 0;
-	Platform platform(sf::Vector2f(800.f, 50.f));
-	Character character(sf::Vector2f(50.f, 100.f), atoi(argv[1]), true);
-	Character clients[5];
-	MovingPlatform mplatform(sf::Vector2f(150.f, 30.f));
+	int dir = 1, flagCheckResize = 0, flagPause = 0, flagInfocus = 0, timeElapsed = 0, lastTime = 0, flagScreen = 0, flagClose = 0;
+
+	Platform platform0(sf::Vector2f(800.f, 100.f), sf::Vector2f(-400.f, 520.f));
+	Platform platform1(sf::Vector2f(800.f, 100.f), sf::Vector2f(500.f, 520.f));
+	Character character(atoi(argv[1]), sf::Vector2f(50.f, 100.f), sf::Vector2f(10.f, 0.f), true);
+	vector<Character> clients;
+	DeathZone dzone(sf::Vector2f(100.f, 50.f), sf::Vector2f(400.f, 590.f));
+	DeathZone universaldzone(sf::Vector2f(3000.f, 50.f), sf::Vector2f(-800.f, 650.f));
+	SpawnPoint spoint(sf::Vector2f(5.f, 5.f), sf::Vector2f(200.f, 50.f));
+	SideBoundary sboundary(sf::Vector2f(5.f, 1000.f), sf::Vector2f(750.f, -200.f));
+	MovingPlatform mplatform0(sf::Vector2f(150.f, 30.f));
+	MovingPlatform mplatform1(sf::Vector2f(150.f, 30.f), sf::Vector2f(1350.f, 300.f));
+
 	sf::Texture texture;
 	sf::Vector2f charPos;
 	int reply_cnt = 0;
+
+
+
 
 	switch (atoi(argv[1]) % 4) {
 	case 0: character.setFillColor(sf::Color::Blue);
@@ -63,9 +83,14 @@ int main(int argc, char* argv[])
 		cout<<"Error";
 		exit(0);
 	}
-	sf::FloatRect boundingBoxPlatform = platform.getGlobalBounds();
-	sf::FloatRect boundingBoxCharacter = character.getGlobalBounds();
-	sf::FloatRect boundingBoxmPlatform = mplatform.getGlobalBounds();
+	sf::FloatRect boundingBoxPlatform0;
+	sf::FloatRect boundingBoxPlatform1;
+	sf::FloatRect boundingBoxCharacter;
+	sf::FloatRect boundingBoxmPlatform0;
+	sf::FloatRect boundingBoxmPlatform1;
+	sf::FloatRect boundingBoxdzone;
+	sf::FloatRect boundingBoxunidzone;
+	sf::FloatRect boundingBoxsboundary;
 
 	window.requestFocus();
 
@@ -113,6 +138,9 @@ int main(int argc, char* argv[])
 				else if (event.key.code == sf::Keyboard::S) {
 					TimePtr->SlowDown();
 				}
+				else if (event.key.code == sf::Keyboard::C) {
+					flagClose = 1;
+				}
 			}
 			if (event.type == sf::Event::LostFocus) {
 				flagInfocus = 1;
@@ -124,7 +152,7 @@ int main(int argc, char* argv[])
 				TimePtr->end_pause();
 				cout << lastTime << " " << TimePtr->getStartTime() << endl;
 			}
-				
+
 		}
 
 
@@ -132,8 +160,12 @@ int main(int argc, char* argv[])
 		window.clear(sf::Color::Black);
 
 		//Setting textures for platform and moving platform
-		platform.setTex(&texture);
-		mplatform.setTex(&texture);
+		platform0.setFillColor(sf::Color::Blue);
+		platform1.setFillColor(sf::Color::Green);
+		platform0.setTex(&texture);
+		platform1.setTex(&texture);
+		mplatform0.setTex(&texture);
+		mplatform1.setTex(&texture);
 
 
 		if (!flagPause) {
@@ -147,9 +179,14 @@ int main(int argc, char* argv[])
 
 
 			//Forming the bounding boxes
-			boundingBoxPlatform = platform.getGlobalBounds();
+			boundingBoxPlatform0 = platform0.getGlobalBounds();
+			boundingBoxPlatform1 = platform1.getGlobalBounds();
 			boundingBoxCharacter = character.getGlobalBounds();
-			boundingBoxmPlatform = mplatform.getGlobalBounds();
+			boundingBoxmPlatform0 = mplatform0.getGlobalBounds();
+			boundingBoxmPlatform1 = mplatform1.getGlobalBounds();
+			boundingBoxdzone = dzone.getGlobalBounds();
+			boundingBoxunidzone = universaldzone.getGlobalBounds();
+			boundingBoxsboundary = sboundary.getGlobalBounds();
 
 			if (!flagInfocus) {
 				if (sf::Keyboard::isKeyPressed(sf::Keyboard::T)) {
@@ -172,27 +209,45 @@ int main(int argc, char* argv[])
 					character.move(0.f, timeElapsed * -2.f);
 				}
 				else {
-					if (!boundingBoxCharacter.intersects(boundingBoxPlatform) && !boundingBoxCharacter.intersects(boundingBoxmPlatform)) {
+					if (!boundingBoxCharacter.intersects(boundingBoxPlatform0) && !boundingBoxCharacter.intersects(boundingBoxmPlatform0) && !boundingBoxCharacter.intersects(boundingBoxPlatform1) && !boundingBoxCharacter.intersects(boundingBoxmPlatform1)) {
 						// no key is pressed, emulate falling if character is not on a platform
 						character.move(0.f, timeElapsed * 3.f);
 					}
-			}
+				}
+				if (boundingBoxCharacter.intersects(boundingBoxdzone) || boundingBoxCharacter.intersects(boundingBoxunidzone)) {
+					character.setPos(spoint.getPos());
+				}
+				if (boundingBoxCharacter.intersects(boundingBoxsboundary)) {
+					int temp = (character.getScreenno() + 1) % 2;
+					character.setScreenno(temp);
+					platform0.setScreenno(temp);
+					platform1.setScreenno(temp);
+					dzone.setScreenno(temp);
+					universaldzone.setScreenno(temp);
+					sboundary.setScreenno(temp);
+					flagScreen = temp;
+					cout << flagScreen << endl;
 
-			
-			
+				}
+
 			}
 
 			string client_no(argv[1]);
 			charPos = character.getPosition();
-			string msg_to_send = client_no + " " + to_string(charPos.x) + " " + to_string(charPos.y);
+			string msg_to_send;
+			if (!flagClose)
+				msg_to_send = client_no + " " + to_string(charPos.x) + " " + to_string(charPos.y) + " " + to_string(character.getScreenno());
+			else
+				msg_to_send = client_no + " " + "exit";
 			zmq::message_t request(msg_to_send.length() + 1);
 			snprintf((char*)request.data(), msg_to_send.size() + 1, "%s", msg_to_send.c_str());
-
 			socket.send(request, zmq::send_flags::none);
-
 
 			//  get the reply.
 			reply_cnt = 0;
+
+			clientMap.clear();
+			clientScreen.clear();
 
 			while (true) {
 				zmq::message_t reply;
@@ -205,49 +260,76 @@ int main(int argc, char* argv[])
 				string s(msg_to_recv);
 				holder.clear();
 				split(s, holder);
-				client_map.erase(atoi(holder[0].c_str()));
-				client_map.insert(pair<int, sf::Vector2f>(atoi(holder[0].c_str()), sf::Vector2f(atof(holder[1].c_str()), atof(holder[2].c_str()))));
-
-
+				clientMap.erase(atoi(holder[0].c_str()));
+				clientMap.insert(pair<int, sf::Vector2f>(atoi(holder[0].c_str()), sf::Vector2f(atof(holder[1].c_str()), atof(holder[2].c_str()))));
+				clientScreen.erase(atoi(holder[0].c_str()));
+				clientScreen.insert(pair<int, int>(atoi(holder[0].c_str()), atoi(holder[3].c_str())));
 			}
 
-			if (reply_cnt - 2 > numPeers) {
-				numPeers = reply_cnt - 2;
+			if (flagClose) {
+				window.close();
+				break;
+			}
+			if (reply_cnt - 3 != numPeers) {
+				cout << "Prev numPeers=" << numPeers;
+				numPeers = reply_cnt - 3;
+				cout << " New numPeers=" << numPeers << endl;
+				clients.clear();
 				int i = 0;
-				for (itr = client_map.begin(); itr != client_map.end(); ++itr) {
-					if (itr->first == -1 || itr->first == atoi(argv[1]))
+				for (itr = clientMap.begin(); itr != clientMap.end(); ++itr) {
+					cout << itr->first << "\t" << itr->second.x << "\t" << itr->second.y << endl;
+					if (itr->first == -1 || itr->first == -2 || itr->first == atoi(argv[1]))
 						continue;
-					clients[i].setVisibility(true);
-					clients[i].setId(itr->first);
+					clients.push_back(Character(itr->first));
 					++i;
 
 				}
 			}
 
 
-			itr = client_map.begin();
-			mplatform.setPosition(itr->second);
+			itr = clientMap.find(-1);
+			mplatform0.setPosition(itr->second);
+			itr = clientMap.find(-2);
+			mplatform1.setPosition(itr->second);
 
-			for (int i = 0; i < numPeers; i++) {
-				itr = client_map.find(clients[i].getId());
-				clients[i].setPosition(itr->second);
+			cout << "Client Pos" << endl;
+			for (auto i = 0; i != clients.size(); ++i) {
+				itr = clientMap.find(clients[i].getId());
+				clients[i].setPos(itr->second);
+				cout << clients[i].getId() << "\t" << clients[i].getPos().x << "\t" << clients[i].getPos().y << endl;
+				itr2 = clientScreen.find(clients[i].getId());
+				if (character.getScreenno() != itr2->second) {
+					clients[i].setVisible(false);
+				}
+				else {
+					clients[i].setVisible(true);
+				}
 			}
 
 
 		}
-
-		window.draw(platform);
+		window.draw(platform0);
+		window.draw(platform1);
 		window.draw(character);
-		window.draw(mplatform);
-		for (int i = 0; i < numPeers; i++) {
-			if (clients[i].getVisibility()) {
-				window.draw(clients[i]);
+		if (flagScreen) {
+			mplatform0.setScreenno(1);
+			mplatform1.setScreenno(1);
+		}
+		window.draw(mplatform0);
+		window.draw(mplatform1);
+		for (auto i : clients) {
+			if (i.getVisible()) {
+				cout << i.getId() << "\t" << i.getPos().x << "\t" << i.getPos().y << endl;
+				window.draw(i);
 			}
 		}
+		//window.draw(sboundary);
 
 		//Implementing Message speed up and slowdown based on client relative timeline
 		//speed wrt to server speed
 		Sleep(4 / TimePtr->get_stepsize());
+
+
 
 		window.display();
 	}
