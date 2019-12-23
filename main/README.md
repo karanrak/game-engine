@@ -1,23 +1,23 @@
 Might have to Change Env Settings to your personal SFML directories while running.
 
-PART2 ---------------------------------------------------------------------------------
-
-The solution for Part 2 of the assignment is in the following folders 
-\basic_zmq_client_server has the server and client code
-
-Execute as standalone_zmq_client.exe <ClientID> <SleepTimeinMs>
-	e.g. HW1.exe 1 1500
-
-The client will send 20 messages at Fixed intervals, as decided by the user. And the server will respond with the latest map update as reply.
 
 FINAL SUBMISSION -----------------------------------------------------------------------
 
-The solution for the remainder of the assignment is stored in \main\server_main and 
-\main\client_main as follows:
+The solution for the remainder of the assignment is stored in server_main and client_main as follows:
 \server_main has the server code
-	
+	Execute as server.exe
+
 \client_main has the client code
 	Execute as client.exe <ClientId>
+
+CONTROLS : 
+
+C : Disconnect and Close
+Q : Pause
+S / F : Slow or Speed Up
+R (Deprecated) : Resize (Fixed size or scaling)
+
+
 
 Note : 
 
