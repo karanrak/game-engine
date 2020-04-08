@@ -2,8 +2,84 @@
 //	Game Object Model definition
 //	Written by karanrak
 //
+#pragma once
+using namespace std;
 
 #define TRANSLATE_UNITS 700
+
+enum GameEvents {
+	C_SPAWN,
+	C_DEATH,
+	C_COLLIDE,
+	C_MOVE,
+	C_SIDEB,
+	C_RECSTART,
+	C_RECSTOP,
+};
+
+
+class Event {
+
+	int type;
+	int timeStamp;
+	sf::Vector2f pos;
+	int id;
+	bool flagPosReq;
+	int screenno;
+
+public:
+
+	explicit Event() {
+
+	}
+	explicit Event(int Type, int Id, int Timestamp, sf::Vector2f Pos, int Screenno) :
+		type(Type), timeStamp(Timestamp), pos(Pos), id(Id), screenno(Screenno) {
+		flagPosReq = 1;
+	}
+	explicit Event(int Type, int Id, int Timestamp, int Screenno) :
+		type(Type), timeStamp(Timestamp), id(Id), screenno(Screenno) {
+		flagPosReq = 0;
+		pos = sf::Vector2f(0.f, 0.f);
+	}
+	int getType() {
+		return type;
+	}
+	void set_Event(int Type, int Id, int Timestamp, sf::Vector2f Pos, int Screenno) {
+		type = Type;
+		timeStamp = Timestamp;
+		pos = Pos;
+		id = Id;
+		screenno = Screenno;
+		flagPosReq = 1;
+	}
+	void set_Event(int Type, int Id, int Timestamp, int Screenno) {
+		type = Type;
+		timeStamp = Timestamp;
+		id = Id;
+		screenno = Screenno;
+		flagPosReq = 0;
+	}
+	int e_getScreenno() {
+		return screenno;
+	}
+	sf::Vector2f e_getPos() {
+		return pos;
+	}
+	int e_getId() {
+		return id;
+	}
+	bool e_getFlag() {
+		return flagPosReq;
+	}
+	int e_getTimeStamp() {
+		return timeStamp;
+	}
+};
+
+class event_handler {
+public:
+	void onEvent(Event e);
+};
 
 class GameObject : public sf::RectangleShape {
 public:
@@ -128,7 +204,7 @@ private:
 
 class Character : public Colorable {
 public:
-	explicit Character(int id = 0, const sf::Vector2f dims = sf::Vector2f(50.f, 100.f), sf::Vector2f pos = sf::Vector2f(10.f, 0.f), bool visible = false, sf::Color color = sf::Color::Yellow) :
+	explicit Character(int id = 0, const sf::Vector2f dims = sf::Vector2f(50.f, 100.f), sf::Vector2f pos = sf::Vector2f(50.f, 50.f), bool visible = true, sf::Color color = sf::Color::Yellow) :
 		m_id(id), m_screenno(0), Colorable(dims, pos, visible, color)
 	{
 
@@ -144,14 +220,14 @@ public:
 		return m_screenno;
 	}
 
-	void setScreenno(int screenno) {	
+	void setScreenno(int screenno) {
 		m_screenno = screenno;
-		if (m_screenno) {
-			move(sf::Vector2f(-(TRANSLATE_UNITS-80) * 1.f, 0.f));
+		/*if (m_screenno) {
+			move(sf::Vector2f(-(TRANSLATE_UNITS - 80) * 1.f, 0.f));
 		}
 		else {
 			move(sf::Vector2f((TRANSLATE_UNITS - 80) * 1.f, 0.f));
-		}
+		}*/
 	}
 
 private:
@@ -193,10 +269,32 @@ private:
 class SideBoundary : public Scrollable {
 public:
 	explicit SideBoundary(const sf::Vector2f dims = sf::Vector2f(10.f, 600.f), sf::Vector2f pos = sf::Vector2f(700.f, 0.f)) :
-		m_screenno(0),Scrollable(dims, pos) {
+		m_screenno(0), Scrollable(dims, pos) {
 		setFillColor(sf::Color::Blue);
 	}
 
+
 private:
 	int m_screenno;
+};
+
+class Character_eventhandler : public event_handler {
+public:
+	void onEvent(Character* c, Event e) {
+		switch (e.getType()) {
+		case C_COLLIDE:
+			//cout << "Handling Collision" << endl;
+			break;
+		case C_MOVE:
+			//cout << "Handling Up" << endl;
+			c->move(e.e_getPos());
+			break;
+		case C_DEATH:
+		case C_SPAWN: c->setPosition(e.e_getPos());
+			break;
+		case C_SIDEB: c->setScreenno((e.e_getScreenno() + 1) % 2);
+			break;
+
+		}
+	}
 };

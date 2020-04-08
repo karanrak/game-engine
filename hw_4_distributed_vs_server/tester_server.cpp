@@ -1,7 +1,8 @@
 //
-//  Server.cpp
-//  Written by karanrak
-//  
+//  Hello World server in C++
+//  Binds REP socket to tcp://*:5555
+//  Expects "Hello" from client, replies with "World"
+//SERVER
 
 
 #include <SFML/Graphics.hpp>
@@ -35,8 +36,6 @@ map<int, Character> charMap;
 
 mutex obj_mutex,cm_mutex;
 vector<Event> myqueue;
-
-event_handler eHandler;
 Character_eventhandler cHandler;
 
 void split(const string& str, vector<string>& cont, char delim = ' ')
@@ -49,6 +48,7 @@ void split(const string& str, vector<string>& cont, char delim = ' ')
 }
 
 Event strToEvent(vector<string> temp, int lasttime) {
+	//result = to_string(e.getType()) + " " + to_string(e.e_getId()) + " " + to_string(ltime) + " " + to_string(e.e_getFlag()) + " " + to_string(temp.x) + " " + to_string(temp.y) + " " + to_string(e.e_getScreenno());
 	Event e;
 	if (atoi(temp[3].c_str()))
 			e.set_Event(atoi(temp[0].c_str()), atoi(temp[1].c_str()), lasttime, sf::Vector2f(atof(temp[4].c_str()), atof(temp[5].c_str())), atoi(temp[6].c_str()));
@@ -70,7 +70,7 @@ void thread_eventhandler() {
 				recorder.r_startpos = clientMap;
 				recorder.r_startchar = charMap;
 				recorder.start_time = e.e_getTimeStamp();
-				//cout << "START TIME RECORDING: " << recorder.start_time << endl;
+				cout << "START TIME RECORDING: " << recorder.start_time << endl;
 				MainTime.start_rec();
 			}
 			else if (recorder.flag == 1) {
@@ -113,22 +113,24 @@ void thread_mplatform() {
 		}
 		if (recorder.recPlay == 1 && flag_recFlag == 1) {
 			flag_recFlag = 0;
+			//s_dir = dir;
+			//s_dir1 = dir1;
+			//s_pos = mplatform.getPosition();
+			//s_pos1 = mplatform1.getPosition();
 			dir = r_dir;
 			dir1 = r_dir1;
 			mplatform.setPosition(r_pos);
 			mplatform1.setPosition(r_pos1);
 			cout << "New position " << mplatform.getPosition().x << endl;
-			lastTime=recorder.start_time;
+			//lastTime=recorder.start_time;
 		}
 
 
-		if (lastTime == 0)
-			lastTime = MainTime.getTime();
-		timeElapsed = MainTime.getTime() - lastTime;
+		timeElapsed = MainTime.getTimeElapsed();
+		lastTime = MainTime.getLastTime();
 		if (recorder.recPlay) {
 			cout << lastTime << "\t" << timeElapsed << "\t"<< mplatform.getPosition().x<<"\n";
 		}
-		lastTime += timeElapsed;
 
 		//Defining the movement of mplatform
 		sf::Vector2f mPos = mplatform.getPosition();
@@ -191,7 +193,7 @@ void thread_function(int contextNum) {
 
 		if (recorder.recPlay && flag_recplay == 0) {
 			flag_recplay = 1;
-			lastTime = recorder.start_time;
+			//lastTime = recorder.start_time;
 			MainTime.end_rec();
 			unique_lock<mutex> lck1(cm_mutex);
 			clientMap = recorder.r_startpos;
@@ -201,11 +203,9 @@ void thread_function(int contextNum) {
 		}
 
 
-		if (lastTime == 0)
-			lastTime = MainTime.getTime();
-		timeElapsed = MainTime.getTime() - lastTime;
+		timeElapsed = MainTime.getTimeElapsed();
+		lastTime = MainTime.getLastTime();
 		//cout << lastTime << "\t" << timeElapsed << endl;
-		lastTime += timeElapsed;
 
 		while (true) {
 			zmq::message_t request;
@@ -219,6 +219,7 @@ void thread_function(int contextNum) {
 			if (holder.size() <= 1)
 				break;
 			if (holder[2] == "up") {
+				cout << MainTime.get_stepsize();
 				MainTime.SpeedUp();
 			}
 			else if (holder[2] == "down") {
@@ -273,9 +274,12 @@ void thread_function(int contextNum) {
 		
 		if (holder.size() != 2) {
 			
+			//Event e = strToEvent(holder,lastPos);
+			//myqueue.push_back(strToEvent(holder, lastTime));
+//Handle the event
 
 			lastPos = clientMap[client_id];
-			tempStr = to_string(lastPos.x) + " " + to_string(lastPos.y) + " " + to_string(charMap[client_id].getScreenno());
+			tempStr = to_string(lastPos.x) + " " + to_string(lastPos.y) + " " + client_screenno;
 			
 			unique_lock<mutex> lck1(obj_mutex);
 
@@ -287,7 +291,9 @@ void thread_function(int contextNum) {
 				zmq::message_t reply(s.length() + 1);
 				reply.empty();
 				snprintf((char*)reply.data(), s.size() + 1, "%s", s.c_str());
+				//memcpy(reply.data(), s.c_str(), s.length());
 				socket.send(reply, zmq::send_flags::sndmore);
+				//cout << "Sending " << contextNum << "\t" << s.c_str() << endl;
 			}
 
 			lck1.unlock();
@@ -298,14 +304,22 @@ void thread_function(int contextNum) {
 		snprintf((char*)replyend.data(), 4, "%s", "end");
 		//memcpy(replyend.data(), "end", 3);
 		socket.send(replyend, zmq::send_flags::dontwait);
+		//cout << endl;
 
 
+		//  Do some 'work'
+		//sleep(1);
+		//  Send reply back to client
+		/*zmq::message_t reply(9);
+		memcpy(reply.data(), "Thank you", 9);
+		socket.send(reply, zmq::send_flags::none);*/
 	}
 }
 
 int main(int argc, char* argv[]) {
 	//  Prepare our context and socket
 
+	//int numThreads = atoi(argv[1]);
 	thread th_platform(thread_mplatform);
 	thread th_events(thread_eventhandler);
 	thread th1(thread_function, 1);
@@ -321,6 +335,14 @@ int main(int argc, char* argv[]) {
 	th3.join();
 	th4.join();
 	th5.join();
+
+	/*for (int i = 0; i < numThreads; i++) {
+		th[i](thread_function, i);
+		th[i].start();
+	}
+	for (int i = 0; i < numThreads; i++) {
+		th[i].join();
+	}*/
 
 	return 0;
 }
