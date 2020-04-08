@@ -11,6 +11,7 @@
 #include <iostream>
 #include<thread>
 #include <zmq.hpp>
+#include "duktape.h""
 
 #include <sstream>
 #ifndef _WIN32
@@ -39,6 +40,12 @@ vector<Event> myqueue;
 event_handler eHandler;
 Character_eventhandler cHandler;
 
+static duk_ret_t native_setscreenno(duk_context* ctx) {
+	int res = (duk_to_int(ctx, -1) + 1)%2;
+	duk_push_number(ctx, res);
+	return 1;  /* one return value */
+}
+
 void split(const string& str, vector<string>& cont, char delim = ' ')
 {
 	stringstream ss(str);
@@ -59,6 +66,9 @@ Event strToEvent(vector<string> temp, int lasttime) {
 
 void thread_eventhandler() {
 	Event e;
+	duk_context* ctx = duk_create_heap_default();
+	duk_push_c_function(ctx, native_setscreenno, 1);
+	duk_put_global_string(ctx, "setscreenno");
 	while(true) {
 		if (!myqueue.empty()) {
 			//cout << "Entering loop" << endl;
@@ -78,6 +88,15 @@ void thread_eventhandler() {
 			}
 			Character* charPtr = &(charMap.find(e.e_getId())->second);
 //handle it
+			if (e.getType() == C_SIDEB) {
+				if (e.e_getScreenno() == 0)
+					duk_eval_string(ctx, "setscreenno(0)");
+				else {
+					duk_eval_string(ctx, "setscreenno(1)");
+				}
+				e.e_setScreenno(duk_to_number(ctx, -1));
+				duk_pop(ctx);
+			}
 			cHandler.onEvent(charPtr, e);
 			clientMap[e.e_getId()] = charPtr->getPos();
 			myqueue.erase(myqueue.begin());

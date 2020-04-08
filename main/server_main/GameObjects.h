@@ -62,6 +62,9 @@ public:
 	int e_getScreenno() {
 		return screenno;
 	}
+	void e_setScreenno(int mscreenno) {
+		screenno = mscreenno;
+	}
 	sf::Vector2f e_getPos() {
 		return pos;
 	}
@@ -305,7 +308,7 @@ public:
 		case C_DEATH:
 		case C_SPAWN: c->setPosition(e.e_getPos());
 			break;
-		case C_SIDEB: c->setScreenno((e.e_getScreenno() + 1) % 2);
+		case C_SIDEB: c->setScreenno(e.e_getScreenno());
 			break;
 		case C_RECSTART: 
 			break;

@@ -10,6 +10,8 @@
 #include <iostream>
 #include <zmq.hpp>
 #include <map>
+#include "duktape.h"
+
 
 using namespace std;
 
@@ -17,6 +19,11 @@ using namespace std;
 
 gametime * TimePtr;  
 
+static duk_ret_t native_setcolor(duk_context* ctx) {
+	int res = (duk_to_int(ctx, -1) + 1) % 4;
+	duk_push_number(ctx, res);
+	return 1;  /* one return value */
+}
 
 void split(const string& str, vector<string>& cont, char delim = ' ')
 {
@@ -83,10 +90,13 @@ int main(int argc, char* argv[])
 	sf::Vector2f charPos;
 	int reply_cnt = 0;
 
+	duk_context* ctx = duk_create_heap_default();
+	duk_push_c_function(ctx, native_setcolor, 1);
+	duk_put_global_string(ctx, "setcolor");
 
-
-
-	switch (atoi(argv[1]) % 4) {
+	int color = atoi(argv[1]) % 4;
+	
+	switch (color) {
 	case 0: character.setFillColor(sf::Color::Blue);
 		break;
 	case 1: character.setFillColor(sf::Color::Green);
@@ -141,7 +151,7 @@ int main(int argc, char* argv[])
 				else if (event.key.code == sf::Keyboard::P) {
 					flagPause = (++flagPause) % 2;
 					if (flagPause) {
-						TimePtr->start_pause();
+						TimePtr->start_pause(); 
 						cout << lastTime << " " << TimePtr->getStartTime() << endl;
 					}
 
@@ -171,6 +181,31 @@ int main(int argc, char* argv[])
 				}
 				else if (event.key.code == sf::Keyboard::O) {
 					e.push_back(Event(C_RECSTOP, character.getId(), lastTime, character.getScreenno()));
+				}
+				else if (event.key.code == sf::Keyboard::Q) {
+					switch (color) {
+					case 0:duk_eval_string(ctx, "setcolor(0)");
+						break;
+					case 1:duk_eval_string(ctx, "setcolor(1)");
+						break;
+					case 2:duk_eval_string(ctx, "setcolor(2)");
+						break;
+					case 3:duk_eval_string(ctx, "setcolor(3)");
+						break;
+					}
+					color = duk_to_number(ctx, -1);
+					duk_pop(ctx);
+					
+					switch (color) {
+					case 0: character.setFillColor(sf::Color::Blue);
+						break;
+					case 1: character.setFillColor(sf::Color::Green);
+						break;
+					case 2: character.setFillColor(sf::Color::Red);
+						break;
+					case 3: character.setFillColor(sf::Color::Yellow);
+						break;
+					}
 				}
 			}
 			if (event.type == sf::Event::LostFocus) {
@@ -257,6 +292,7 @@ int main(int argc, char* argv[])
 					flag_tobeScreenChange = 1;
 				}
 
+
 			}
 
 			string b(argv[1]);
@@ -306,7 +342,6 @@ int main(int argc, char* argv[])
 			snprintf((char*)request.data(), a.size() + 1, "%s", a.c_str());
 			//memcpy(request.data(), a.c_str(), a.length());
 
-			//std::cout << "sending to server : " << a.c_str() << "�" << std::endl;
 			socket.send(request, zmq::send_flags::none);
 
 
